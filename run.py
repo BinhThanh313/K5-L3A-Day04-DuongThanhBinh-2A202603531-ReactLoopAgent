@@ -19,7 +19,7 @@ def main():
     p.add_argument('question', help='Câu hỏi cho agent')
     p.add_argument('--bonus', action='store_true', help='Dùng bộ tools bonus')
     p.add_argument('--mode', choices=['snapshot', 'live'], default='snapshot')
-    p.add_argument('--provider', choices=['openai', 'gemini', 'anthropic', 'openrouter'], default=os.getenv('PROVIDER', 'openai'))
+    p.add_argument('--provider', choices=['openai', 'gemini', 'anthropic', 'openrouter', 'groq'], default=os.getenv('PROVIDER', 'openai'))
     p.add_argument('--model', default=os.getenv('MODEL'))
     p.add_argument('--max-steps', type=int, default=6)
     args = p.parse_args()
@@ -33,5 +33,22 @@ def main():
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result['status'] == 'completed' else 1
 
+def _load_dotenv():
+    from pathlib import Path
+    env_path = Path(__file__).resolve().parent / '.env'
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding='utf-8').splitlines():
+        s = line.strip()
+        if not s or s.startswith('#') or '=' not in s:
+            continue
+        k, v = s.split('=', 1)
+        k = k.removeprefix('export ').removeprefix('$env:').strip()
+        v = v.strip().strip('"').strip("'")
+        if k and v:
+            os.environ.setdefault(k, v)
+
+
 if __name__ == '__main__':
+    _load_dotenv()
     sys.exit(main())

@@ -33,7 +33,7 @@ def run_case(case, args):
 
 def main():
     parser = argparse.ArgumentParser(description='Chạy agent và chấm eval 0–100')
-    choices = ['openai', 'gemini', 'anthropic', 'openrouter']
+    choices = ['openai', 'gemini', 'anthropic', 'openrouter', 'groq']
     parser.add_argument('--provider', choices=choices, default=os.getenv('PROVIDER', 'openai'))
     parser.add_argument('--model', default=os.getenv('MODEL'))
     parser.add_argument('--judge-provider', choices=choices, default=os.getenv('JUDGE_PROVIDER'))
@@ -78,5 +78,21 @@ def main():
         return 1
     return 0
 
+def _load_dotenv():
+    env_path = Path(__file__).resolve().parents[1] / '.env'
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding='utf-8').splitlines():
+        s = line.strip()
+        if not s or s.startswith('#') or '=' not in s:
+            continue
+        k, v = s.split('=', 1)
+        k = k.removeprefix('export ').removeprefix('$env:').strip()
+        v = v.strip().strip('"').strip("'")
+        if k and v:
+            os.environ.setdefault(k, v)
+
+
 if __name__ == '__main__':
+    _load_dotenv()
     sys.exit(main())

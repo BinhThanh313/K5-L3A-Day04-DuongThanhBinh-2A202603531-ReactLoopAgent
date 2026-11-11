@@ -1,6 +1,7 @@
 """Bốn provider cùng một interface. Không chứa agent loop."""
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 
@@ -8,20 +9,42 @@ CONFIG = {
     'openai': ('OPENAI_API_KEY', 'https://api.openai.com/v1/chat/completions'),
     'gemini': ('GEMINI_API_KEY', 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'),
     'openrouter': ('OPENROUTER_API_KEY', 'https://openrouter.ai/api/v1/chat/completions'),
+    'groq': ('GROQ_API_KEY', 'https://api.groq.com/openai/v1/chat/completions'),
     'anthropic': ('ANTHROPIC_API_KEY', 'https://api.anthropic.com/v1/messages'),
 }
 
 
 def post_json(url, headers, payload):
-    req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={'Content-Type': 'application/json', **headers})
-    try:
-        with urllib.request.urlopen(req, timeout=60) as response:
-            return json.load(response)
-    except urllib.error.HTTPError as exc:
-        # Do not print response bodies: they may contain account or request data.
-        raise RuntimeError(f'Provider trả HTTP {exc.code}; kiểm tra model, key và quota.') from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f'Không kết nối được provider: {exc.reason}') from exc
+    for wait in (5, 12, 25, 45, 60, None):
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode(),
+            headers={'Content-Type': 'application/json', 'User-Agent': 'StatusAgentLab/1.0', **headers},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as exc:
+            if exc.code in (429, 500, 502, 503, 504) and wait is not None:
+                retry_after = exc.headers.get('Retry-After') if exc.headers else None
+                try:
+                    delay = max(float(retry_after), wait) if retry_after else wait
+                except ValueError:
+                    delay = wait
+                time.sleep(min(delay, 65))
+                continue
+            if exc.code == 400 and wait == 5:
+                # Thử lại 1 lần nếu model sinh tool_use lỗi tạm thời (Groq tool_use_failed)
+                time.sleep(2)
+                continue
+            # Do not print response bodies: they may contain account or request data.
+            raise RuntimeError(f'Provider trả HTTP {exc.code}; kiểm tra model, key và quota.') from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            if wait is not None:
+                time.sleep(min(wait, 15))
+                continue
+            reason = getattr(exc, 'reason', exc)
+            raise RuntimeError(f'Không kết nối được provider: {reason}') from exc
 
 
 class Provider:
