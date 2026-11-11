@@ -154,8 +154,8 @@ MSSV: 2A202603531
 ## 6. Ghi chú phần Thử thách Bonus (`eval_bonus.json`)
 
 - **Kết quả tổng hợp (`eval_bonus.json`):**
-  - Điểm trung bình: **99.0 / 100** (10/10 case `scored`: `B1`: 100, `B2`: 100, `B3`: 98, `B4`: 97, `B5`: 100, `B6`: 97, `B7`: 100, `B8`: 100, `B9`: 100, `B10`: 98; **0 vi phạm mechanical**).
-  - Điểm quy đổi: **14.85 / 15 điểm** (`max_steps = 16`, model `openai/gpt-oss-120b`, 46 model calls của Agent, 92,476 Agent tokens + 36,139 Judge tokens = 128,615 tổng tokens).
+  - Điểm trung bình (`score_0_100`): **99.0 / 100** (10/10 case `scored`: `B1`: 100, `B2`: 100, `B3`: 98, `B4`: 97, `B5`: 100, `B6`: 97, `B7`: 100, `B8`: 100, `B9`: 100, `B10`: 98; **0 vi phạm mechanical**).
+  - Cấu hình & chi phí: `max_steps = 16`, model `openai/gpt-oss-120b`, 46 model calls của Agent, 92,476 Agent tokens + 36,139 Judge tokens = 128,615 tổng tokens.
 - **Xử lý Retry, Định dạng, Pagination và Context:**
   - **Retry 429 có giới hạn (`B3`, `B4`, `B10`):** Khi tool trả `RATE_LIMITED` (`http_status: 429`), kết quả được trả về làm observation cho model; prompt giới hạn thử lại tối đa 2 lần nữa (tổng số lần gọi cho mỗi status tool không vượt quá 3 lần). Nếu vẫn 429 (`B4`) thì dừng gọi và báo rõ không xác nhận được trạng thái dịch vụ đó (partial failure), không coi 429 là outage.
   - **Sửa lỗi định dạng tham số (`B5`):** Khi `get_incident_details` trả `INVALID_ARGUMENTS`, model đọc thông báo lỗi từ observation và gọi lại ngay với `offset=0, limit=2` kiểu số nguyên hợp lệ.
